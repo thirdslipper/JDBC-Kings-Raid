@@ -15,6 +15,7 @@ import java.sql.SQLException;
 import java.sql.Statement;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
+import java.util.Arrays;
 import java.util.Scanner;
 
 
@@ -33,38 +34,45 @@ public class kingsraid {
 		//obj.closeConnection();
 	}
 
-	public void ui() throws SQLException{
+	public void ui(){
 		Scanner kb = new Scanner(System.in);
 		getConnection();
 		int input = 0;
-		while (input != 5){
-			System.out.println("ようこそみんあさん"
-					+ "\nWhat would you like to do?"
-					+ "\n\t1. create tables"
-					+ "\n\t2. delete tables"
-					+ "\n\t3. query"
-					+ "\n\t4. insert"
-					+ "\n\t5. exit"
-					+ "\n\t6. alter");
-			input = kb.nextInt();
-			
-			switch (input) {
-			case 1: createItemsAndHeroes();
+		try {
+			while (input != 5){
+				System.out.println("ようこそみんあさん"
+						+ "\nWhat would you like to do?"
+						+ "\n\t1. create tables"
+						+ "\n\t2. delete tables"
+						+ "\n\t3. query"
+						+ "\n\t4. insert"
+						+ "\n\t5. exit"
+						+ "\n\t6. alter");
+				input = kb.nextInt();
+
+				switch (input) {
+				case 1: createItemsAndHeroes();
+				break;
+				case 2: deleteTables();
 					break;
-			case 2: //deleteTables();
+				case 3: testQuery(createQueryString());
+				break;
+				case 4: prepareInsert(kb);
+				break;
+				case 5: closeConnection();
+				break;
+				case 6:
 					break;
-			case 3: testQuery(createQueryString());
-					break;
-			case 4: prepareInsert();
-					break;
-			case 5: closeConnection();
-					break;
-			case 6:
-					break;
-			default: closeConnection();
+				default: closeConnection();
+				break;
+				}
+				
+				//kb.nextLine();
 			}
+		} catch (SQLException e){
+			System.out.println("msg:" + e.getMessage());
 		}
-		kb.close();
+		//kb.close();
 		System.exit(0);
 	}
 	public String createQueryString(){
@@ -86,8 +94,8 @@ public class kingsraid {
 				+ "Stat_2 " + stats
 				+ "Stat_3 " + stats
 				+ "Stat_4 " + stats
-				+ "Tier TINYINT UNSIGNED NOT NULL DEFAULT 7 CHECK (Tier > 0 AND Tier < 8),"
-				+ "Mod_stat ENUM(\"Stat_1\", \"STAT_2\", \"STAT_3\", \"STAT_4\"),"
+				+ "Tier TINYINT UNSIGNED DEFAULT 7 CHECK (Tier > 0 AND Tier < 8),"
+				+ "Mod_stat ENUM(\"Stat_1\", \"STAT_2\", \"STAT_3\", \"STAT_4\", \"NULL\"),"
 				+ "PRIMARY KEY (id))");
 
 		createTable("create table kings_raid_items.HEROES ("
@@ -103,48 +111,36 @@ public class kingsraid {
 				+ "PRIMARY KEY (name))");
 	}
 
-	public void getConnection(){
-		try {	//tests for driver and returns an active connection to the database
-			Class.forName("com.mysql.jdbc.Driver");
-			//String unicode="useSSL=false&autoReconnect=true&useUnicode=yes&characterEncoding=UTF-8";
-			connection =  DriverManager.getConnection("jdbc:mysql://localhost:3306/kings_raid_items?autoReconnect=true&amp;useSSL=true", "java", "test");
-		} catch (SQLException e) {
-			throw new IllegalStateException("Unable to connect.", e);
-		} catch (ClassNotFoundException e) {
-			e.printStackTrace();
-			throw new RuntimeException(e);
-		}
-	}
-	public void closeConnection() throws SQLException{
-		connection.close();
-	}
 
-	public void prepareInsert(){
+
+	public void prepareInsert(Scanner kb){
 		try {
-			PreparedStatement ps = connection.prepareStatement("insert into kings_raid_items.items(stat_1, stat_2, stat_3, stat_4) values (?,?,?,?)");
-			Scanner kb = new Scanner(System.in);
-			String []input = new String[4];//= "", input2 = "";
-			
-			//System.out.println("ex: kings_raid_items.items(stat_1, stat_2, stat_3, stat_4, tier, mod_stat)"
-			//		+ "\nEnter db.table to enter into: ");
-			//input1 = kb.nextLine();
-			//System.out.println("entered: " + input1);
-			//ps.setString(1, input1);
-			for (int i = 0; i < 4; ++i){
-			System.out.println("Enter Values to enter into: "
-					+ "\n('v1', 'v2',..,)");
-			input[i] = kb.nextLine();
-			ps.setString(i+1, input[i]);
+			kb.nextLine();
+			PreparedStatement ps = connection.prepareStatement("insert into kings_raid_items.items"
+					+ "(stat_1, stat_2, stat_3, stat_4, tier, mod_stat) values (?, ?, ?, ?, ?, ?)");
+			//Scanner kb = new Scanner(System.in);
+			String input;
+			String[] inputBlock;
+
+			System.out.println("Enter Values to enter into: (stat_1, stat_2, stat_3, stat_4, tier, mod_stat)"
+					+ "\nv1, v2,..,vn");
+			input = kb.nextLine();
+			inputBlock = input.split(", ");
+
+			System.out.println("entered: " + Arrays.toString(inputBlock));
+			int i = 1;
+			for (String s : inputBlock){
+				ps.setString(i++, s);
 			}
-			//System.out.println("entered: " + input2);
-			
+
 			int result = ps.executeUpdate();
-			if (result != 0)
+			if (result != 0){
 				System.out.println("statment success");
+			}
 			else {
 				System.out.println("fail");
 			}
-			kb.close();
+			//kb.close();
 		} catch (SQLException e) {
 			e.printStackTrace();
 		}
@@ -202,6 +198,21 @@ public class kingsraid {
 		} catch (SQLException e) {
 			e.printStackTrace();
 		}
+	}
+	public void getConnection(){
+		try {	//tests for driver and returns an active connection to the database
+			Class.forName("com.mysql.jdbc.Driver");
+			//String unicode="useSSL=false&autoReconnect=true&useUnicode=yes&characterEncoding=UTF-8";
+			connection =  DriverManager.getConnection("jdbc:mysql://localhost:3306/kings_raid_items?autoReconnect=true&amp;useSSL=true", "java", "test");
+		} catch (SQLException e) {
+			throw new IllegalStateException("Unable to connect.", e);
+		} catch (ClassNotFoundException e) {
+			e.printStackTrace();
+			throw new RuntimeException(e);
+		}
+	}
+	public void closeConnection() throws SQLException{
+		connection.close();
 	}
 	/**
 	 * Login creates a connection with a database specified in parameters, with the user information also being 
