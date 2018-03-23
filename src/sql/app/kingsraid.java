@@ -36,7 +36,7 @@ public class kingsraid {
 		int input = 0;
 		try {
 			while (input != 5){
-				System.out.println("ようこそみんあさん"
+				System.out.println("ようこそみんなさん"
 						+ "\nWhat would you like to do?"
 						+ "\n\t1. create table"
 						+ "\n\t2. delete table"
@@ -68,7 +68,6 @@ public class kingsraid {
 		System.exit(0);
 	}
 	public String createQueryString(Scanner kb){
-		//kb.nextLine();
 		System.out.println("enter query");
 		String input = kb.nextLine();
 		return input;
@@ -78,13 +77,12 @@ public class kingsraid {
 	 * @param kb Scanner object for user I/O.
 	 */
 	public void createItemsAndHeroes(Scanner kb){
-		//kb.nextLine();
 		String input;
 		try {
 			Statement stmt = connection.createStatement();
 			System.out.println("Enter table name to create: (heroes or items)");
 			input = kb.nextLine().toLowerCase().trim();
-			//check doesn't work, 
+			//check somewhat unreliable
 			if (input.equals("items")){
 				String statsList = "('atk', 'ats', 'crit', 'critd', 'pen', 'ls', 'pdodge', 'pblock', 'pdef', 'mdodge', 'mblock', 'mdef', 'hp', 'acc', 'cc')";
 				String stats = "ENUM " + statsList + " NOT NULL, ";
@@ -96,7 +94,8 @@ public class kingsraid {
 						+ "Stat_4 " + stats + "CHECK (Stat_4 in " + statsList + "), "
 						+ "Tier TINYINT UNSIGNED DEFAULT 7, "
 						+ "CHECK (Tier>0 AND Tier<8),"
-						+ "item_class ENUM(\"\")NOT NULL, "
+						+ "item_class ENUM(\"\") NOT NULL, "
+						+ "item_type NOT NULL, "
 						+ "item_location ENUM(\"\") NOT NULL,"
 						+ "Mod_stat ENUM(\"Stat_1\", \"STAT_2\", \"STAT_3\", \"STAT_4\", \"NULL\"),"
 						+ "PRIMARY KEY (id))");
@@ -125,10 +124,8 @@ public class kingsraid {
 
 	public void insert(Scanner kb){
 		try {
-			//kb.nextLine();
 			PreparedStatement ps = connection.prepareStatement("insert into kings_raid_items.items"
 					+ "(stat_1, stat_2, stat_3, stat_4, tier, mod_stat) values (?, ?, ?, ?, ?, ?)");
-			//Scanner kb = new Scanner(System.in);
 			String input;
 			String[] inputBlock;
 
@@ -163,12 +160,12 @@ public class kingsraid {
 			stmt = connection.createStatement();
 			if (stmt.execute(query)) {	//true if rs obj or false if no update/no result, rs stored in stmt; executeQuery(string) returns ResultSet
 				rs = stmt.getResultSet();
-				//assume not using *
 					//start indexes of certain keywords
 				int start = query.indexOf("select ") + 7;	//should be 0
 				int end = query.indexOf(" from ");	//index of first space before from
 				
 				String[] selectedTerms = query.substring(start, end).split(", ");	//contains terms, assuming not *
+				
 				if (selectedTerms.length > 0 && selectedTerms[0].equals("*")){	//if asterisk
 					int from = end + 6;
 					String fromTable = query.substring(from, query.length());
@@ -196,13 +193,18 @@ public class kingsraid {
 					
 					createQuery(asterisk.toString());
 				} else {
-					for (String s:selectedTerms){
-						System.out.printf("%-15s", s);
+					String format;
+					String[] textSizes = new String[selectedTerms.length];
+					//for (String s : selectedTerms){
+					for (int k = 0; k < selectedTerms.length; ++k){
+						format = "%-" + (selectedTerms[k].length()+1) + "s";
+						textSizes[k] = format;
+						System.out.printf(format, selectedTerms[k]);	//item_location is long
 					}
 					System.out.println();
 					while (rs.next()){
 						for (int i = 0; i < selectedTerms.length; ++i){
-							System.out.printf("%-15s", rs.getString(selectedTerms[i]));
+							System.out.printf(textSizes[i], rs.getString(selectedTerms[i]));
 							//System.out.print(selectedTerms[i] + ": " + rs.getString(selectedTerms[i]) + ", ");
 						}
 						System.out.println();
@@ -213,7 +215,6 @@ public class kingsraid {
 				stmt.executeUpdate(query);
 				System.out.println("no rs");
 			}
-			//do something with rs
 		} catch (SQLException e) {
 			System.out.println("error! " + e.getMessage() + ", Error code: " + e.getErrorCode() + ", SQL State: " + e.getSQLState());
 		} finally {
