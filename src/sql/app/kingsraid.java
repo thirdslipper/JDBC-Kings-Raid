@@ -5,7 +5,9 @@
  * notes: <p>, {@link x}, @see
  * Database name : kings_raid_items, port 3306
  * CREATE USER 'java'@'localhost' IDENTIFIED BY 'test';
- * GRANT ALL ON kings_raid_items.* TO 'java'@'localhost' IDENTIFIED BY 'test' 
+ * GRANT ALL ON kings_raid_items.* TO 'java'@'localhost' IDENTIFIED BY 'test'
+ * Pre-reqs to using the project: an existing database, an existing account for the database (or root), and port is set to 3306.
+ * The account information and port may be changed.
  */
 package sql.app;
 
@@ -24,19 +26,26 @@ import java.util.Scanner;
 public class kingsraid {
 	private Connection connection = null;
 
+	/**
+	 * Creates an object of this class to execute the UI for the user.
+	 * @param args
+	 * @throws SQLException
+	 */
 	public static void main(String args[]) throws SQLException{
 		kingsraid obj = new kingsraid();
 		obj.ui();
-		
 	}
 
+	/**
+	 * This is the main user interface that the user interacts with to utilize the functions to manipulate the database
+	 */
 	public void ui(){
 		Scanner kb = new Scanner(System.in);
 		getConnection();
 		int input = 0;
 		try {
 			while (input != 5){
-				System.out.println("ようこそみんなさん"
+				System.out.println("ようこそみんなさん | Welcome"
 						+ "\nWhat would you like to do?"
 						+ "\n\t1. create table"
 						+ "\n\t2. delete table"
@@ -67,13 +76,22 @@ public class kingsraid {
 		kb.close();
 		System.exit(0);
 	}
+	
+	/**
+	 * This method serves as a error-checking function to allow some leeway when allowing the user to enter a MySQL query.
+	 * @param kb Scanner object for user I/O.
+	 * @return a properly formatted string representing a MySQL query.
+	 */
+	// to do
 	public String createQueryString(Scanner kb){
 		System.out.println("enter query");
 		String input = kb.nextLine();
 		return input;
 	}
+	
 	/**
 	 * This method creates a predetermined table in the database corresponding to either heroes or items.
+	 * enums for item_class, item_type, item_location to do
 	 * @param kb Scanner object for user I/O.
 	 */
 	public void createItemsAndHeroes(Scanner kb){
@@ -116,16 +134,22 @@ public class kingsraid {
 						+ "PRIMARY KEY (name))");
 			}
 			System.out.println("Table " + input + " successfully created!");
+			closeRSSTMT(null, stmt);
 		} catch (SQLException e){
 			System.out.println("error! " + e.getMessage() + ", Error code: " + e.getErrorCode() + ", SQL State: " + e.getSQLState());
 		}
 	}
 
-
+	/**
+	 * Inserts data into the items table using a {@link PreparedStatement}.  The user-entered data is split into an array to be set into
+	 * the prepared statement.  Not possible to add multiple items in a single query (use createQuery()).
+	 * todo insert data into heroes table 
+	 * @param kb Scanner to read user I/O.
+	 */
 	public void insert(Scanner kb){
 		try {
 			PreparedStatement ps = connection.prepareStatement("insert into kings_raid_items.items"
-					+ "(stat_1, stat_2, stat_3, stat_4, tier, mod_stat) values (?, ?, ?, ?, ?, ?)");
+					+ "(stat_1, stat_2, stat_3, stat_4, tier, mod_stat, item_class, item_type, item_location) values (?, ?, ?, ?, ?, ?, ?, ?, ?)");
 			String input;
 			String[] inputBlock;
 
@@ -134,7 +158,7 @@ public class kingsraid {
 			input = kb.nextLine();
 			inputBlock = input.split(", ");
 
-			System.out.println("entered: " + Arrays.toString(inputBlock));
+			//System.out.println("entered: " + Arrays.toString(inputBlock));
 			int i = 1;
 			for (String s : inputBlock){
 				ps.setString(i++, s);
@@ -147,11 +171,19 @@ public class kingsraid {
 			else {
 				System.out.println("insert failed!");
 			}
+			closeRSSTMT(null, ps);
 		} catch (SQLException e) {
 			System.out.println("error!" + e.getMessage() + ", Error code: " + e.getErrorCode() + ", SQL State: " + e.getSQLState());
 		}
 	}
 
+	/**
+	 * 
+	 * @param query A user entered MySQL query that has some error-checking attempted on the statement.  The function initially 
+	 * checks if the query has a result to be returned and executes accordingly.  If there is a result to be returned, then the query is
+	 * analyzed, where the control flow divides into whether or not the MySQL code uses an asterisk (*) for the table fields.  The result
+	 * is then formatted and displayed for the user.
+	 */
 	public void createQuery(String query){
 		Statement stmt = null;
 		ResultSet rs = null;
@@ -191,6 +223,7 @@ public class kingsraid {
 					asterisk.append("from " + fromTable);
 					//System.out.println("\ntesting : " + asterisk.toString());
 					
+					closeRSSTMT(columns, null);
 					createQuery(asterisk.toString());
 				} else {
 					String format;
@@ -232,31 +265,34 @@ public class kingsraid {
 		
 	}
 
-	public void createTable(String sql){
-		Statement stmt = null;
-		try {
-			stmt = connection.createStatement();
-			stmt.executeUpdate(sql);
-			System.out.println("Table created");
-		} catch (SQLException e) {
-			System.out.println("error! " + e.getMessage() + ", Error code: " + e.getErrorCode() + ", SQL State: " + e.getSQLState());
-		}
-	}
+
+	
+	/**
+	 * Deletes a table specified by the user.
+	 * @param kb Scanner for user I/O.
+	 */
 	public void deleteTables(Scanner kb){
 		try {
-			//kb.nextLine();
 			String tableToDrop;
 			StringBuilder input = new StringBuilder("drop table kings_raid_items.");
+			
 			Statement stmt = connection.createStatement();
-			System.out.println("Enter table to drop: ex. heroes");
+			System.out.println("Enter table to drop: items or heroes");
 			tableToDrop = kb.nextLine();
+			
 			input.append(tableToDrop);
 			stmt.executeUpdate(input.toString());
+			
 			System.out.println("Table " + tableToDrop + " successfully dropped!");
+			closeRSSTMT(null, stmt);
 		} catch (SQLException e) {
 			System.out.println("error!" + e.getMessage() + ", Error code: " + e.getErrorCode() + ", SQL State: " + e.getSQLState());
 		}
 	}
+	
+	/**
+	 * Grants a connection to the MySQL server using the login credentials that are hard-coded in.
+	 */
 	public void getConnection(){
 		try {	//tests for driver and returns an active connection to the database
 			Class.forName("com.mysql.jdbc.Driver");
@@ -269,6 +305,12 @@ public class kingsraid {
 			throw new RuntimeException(e);
 		}
 	}
+	
+	/**
+	 * Helper function to close ResultSet and Statement objects.
+	 * @param rs
+	 * @param stmt
+	 */
 	public void closeRSSTMT(ResultSet rs, Statement stmt){
 		if (rs != null) {
 			try {
@@ -283,10 +325,26 @@ public class kingsraid {
 			stmt = null;
 		}
 	}
-	
+	/**
+	 * Disconnects the user from the MySQL server.
+	 * @throws SQLException
+	 */
 	public void closeConnection() throws SQLException{
 		connection.close();
 	}
+
+	
+	public void createTable(String sql){ // unused 
+		Statement stmt = null;
+		try {
+			stmt = connection.createStatement();
+			stmt.executeUpdate(sql);
+			System.out.println("Table created");
+		} catch (SQLException e) {
+			System.out.println("error! " + e.getMessage() + ", Error code: " + e.getErrorCode() + ", SQL State: " + e.getSQLState());
+		}
+	}
+	
 	/**
 	 * Login creates a connection with a database specified in parameters, with the user information also being 
 	 * specified in the fields.
