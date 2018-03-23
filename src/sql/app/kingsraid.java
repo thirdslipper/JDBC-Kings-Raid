@@ -15,6 +15,7 @@ import java.sql.SQLException;
 import java.sql.Statement;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Scanner;
 
@@ -43,7 +44,7 @@ public class kingsraid {
 						+ "\n\t4. insert"
 						+ "\n\t5. exit");
 				input = kb.nextInt();
-
+				kb.nextLine();
 				switch (input) {
 				case 1: createItemsAndHeroes(kb);
 						break;
@@ -67,14 +68,17 @@ public class kingsraid {
 		System.exit(0);
 	}
 	public String createQueryString(Scanner kb){
-		kb.nextLine();
+		//kb.nextLine();
 		System.out.println("enter query");
 		String input = kb.nextLine();
 		return input;
 	}
-
+	/**
+	 * This method creates a predetermined table in the database corresponding to either heroes or items.
+	 * @param kb Scanner object for user I/O.
+	 */
 	public void createItemsAndHeroes(Scanner kb){
-		kb.nextLine();
+		//kb.nextLine();
 		String input;
 		try {
 			Statement stmt = connection.createStatement();
@@ -121,7 +125,7 @@ public class kingsraid {
 
 	public void insert(Scanner kb){
 		try {
-			kb.nextLine();
+			//kb.nextLine();
 			PreparedStatement ps = connection.prepareStatement("insert into kings_raid_items.items"
 					+ "(stat_1, stat_2, stat_3, stat_4, tier, mod_stat) values (?, ?, ?, ?, ?, ?)");
 			//Scanner kb = new Scanner(System.in);
@@ -158,20 +162,51 @@ public class kingsraid {
 		try {
 			stmt = connection.createStatement();
 			if (stmt.execute(query)) {	//true if rs obj or false if no update/no result, rs stored in stmt; executeQuery(string) returns ResultSet
-				System.out.println("rs");
 				rs = stmt.getResultSet();
 				//assume not using *
-				
-				
+					//start indexes of certain keywords
 				int start = query.indexOf("select ") + 7;	//should be 0
 				int end = query.indexOf(" from ");	//index of first space before from
-				String[] selectedTerms = query.substring(start, end).split(", ");	//contains terms, assuming not *
 				
-				while (rs.next()){
-					for (int i = 0; i < selectedTerms.length; ++i){
-						System.out.print(selectedTerms[i] + ": " + rs.getString(selectedTerms[i]) + ", ");
+				String[] selectedTerms = query.substring(start, end).split(", ");	//contains terms, assuming not *
+				if (selectedTerms.length > 0 && selectedTerms[0].equals("*")){	//if asterisk
+					int from = end + 6;
+					String fromTable = query.substring(from, query.length());
+					StringBuilder newQuery = new StringBuilder("select column_name from information_schema.columns where table_name = '");
+					newQuery.append(fromTable + "' and table_schema = 'kings_raid_items'");	//table name and db
+					
+					ResultSet columns = stmt.executeQuery(newQuery.toString());	// list of all column names
+					ArrayList<String> columnNames = new ArrayList<String>();	//hold the string representation of column names of variable amount
+					
+					int j = 0;
+					while (columns.next()){
+						//System.out.printf("%-8s ", columns.getString(1));
+						columnNames.add(j++, columns.getString(1));
+					}
+					StringBuilder asterisk = new StringBuilder("select ");
+					for (int i = 0; i < columnNames.size(); ++i){
+						asterisk.append(columnNames.get(i));
+						if (i < columnNames.size()-1)
+							asterisk.append(", ");
+						else
+							asterisk.append(" ");
+					}
+					asterisk.append("from " + fromTable);
+					//System.out.println("\ntesting : " + asterisk.toString());
+					
+					createQuery(asterisk.toString());
+				} else {
+					for (String s:selectedTerms){
+						System.out.printf("%-15s", s);
 					}
 					System.out.println();
+					while (rs.next()){
+						for (int i = 0; i < selectedTerms.length; ++i){
+							System.out.printf("%-15s", rs.getString(selectedTerms[i]));
+							//System.out.print(selectedTerms[i] + ": " + rs.getString(selectedTerms[i]) + ", ");
+						}
+						System.out.println();
+					}
 				}
 			}
 			else {
@@ -208,7 +243,7 @@ public class kingsraid {
 	}
 	public void deleteTables(Scanner kb){
 		try {
-			kb.nextLine();
+			//kb.nextLine();
 			String tableToDrop;
 			StringBuilder input = new StringBuilder("drop table kings_raid_items.");
 			Statement stmt = connection.createStatement();
