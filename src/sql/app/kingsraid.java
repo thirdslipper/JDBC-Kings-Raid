@@ -43,7 +43,32 @@ public class kingsraid {
 	 */
 	public void ui(){
 		Scanner kb = new Scanner(System.in);
-		getConnection();
+		System.out.println("Would you like to do a custom(1) or default(2) connection?");
+		String connect = "";
+		do {
+			if (!connect.equals("")){
+				System.out.println("Invalid entry.");
+			}
+			connect = kb.nextLine();
+		} while (!connect.equals("1") && !connect.equals("2") && !connect.equalsIgnoreCase("custom") && !connect.equalsIgnoreCase("default"));
+		
+		if (connect.equalsIgnoreCase("custom") || connect.equals("1")){
+			System.out.println("this is insecure and only for personal project intentions.");
+			System.out.println("Enter url, user, pass."
+					+ "\n ex: localhost:3306/kings_raid_items?autoReconnect=true&useSSL=false, java, test");
+			String[] credentials = kb.nextLine().trim().split(", ");
+			if (credentials.length == 3)
+				customConnection(credentials[0], credentials[1], credentials[2]);
+			else {
+				System.out.println("invalid credential entry, entering default connection!");
+				getConnection();
+			}
+		}
+		else{
+			getConnection();
+		}
+		
+		
 		int input = 1;
 		try {
 			while (input != 6){
@@ -126,6 +151,7 @@ public class kingsraid {
 			//			+ "item_type NOT NULL,"
 			//			+ "item_location NOT NULL," // ENUM(\"\")
 						+ "Mod_stat ENUM(\"Stat_1\", \"STAT_2\", \"STAT_3\", \"STAT_4\", \"NULL\"),"
+						+ "Enchant varchar(50),"
 						+ "PRIMARY KEY (id))");
 			}
 			else if (input.equals("heroes")){
@@ -158,8 +184,12 @@ public class kingsraid {
 	 */
 	public void insert(Scanner kb){
 		try {
-			System.out.println("Would you like to insert into items or heroes?");
-			String inputTable = kb.nextLine();
+			String inputTable = "";
+			do{
+				System.out.println("Would you like to insert into items or heroes?");
+				inputTable = kb.nextLine();
+			} while (inputTable.equalsIgnoreCase("items") || inputTable.equalsIgnoreCase("heroes"));
+			
 			if (inputTable.equalsIgnoreCase("heroes") || inputTable.equalsIgnoreCase("items")){
 				PreparedStatement ps;
 				if (inputTable.equalsIgnoreCase("items")){
@@ -289,7 +319,7 @@ public class kingsraid {
 				}
 			}
 			else {
-				System.out.println("no rs");
+				System.out.println("statement executed!");
 				//stmt.executeUpdate(query);
 			}
 		} catch (SQLException e) {
@@ -336,6 +366,26 @@ public class kingsraid {
 			//String unicode="useSSL=false&autoReconnect=true&useUnicode=yes&characterEncoding=UTF-8";
 			//can replace "root" with "java and "" with "test"
 			connection =  DriverManager.getConnection("jdbc:mysql://localhost:3306/kings_raid_items?autoReconnect=true&useSSL=false", "root", "");
+			System.out.println("Connected!");
+		} catch (SQLException e) {
+			throw new IllegalStateException("Unable to connect.", e);
+		} catch (ClassNotFoundException e) {
+			e.printStackTrace();
+			throw new RuntimeException(e);
+		}
+	}
+	
+	/**
+	 * Grants a connection to a specified MySQL server using a custom login.
+	 * @param url 
+	 * @param user
+	 * @param password
+	 */
+	public void customConnection(String url, String user, String password){
+		try {
+			Class.forName("com.mysql.jdbc.Driver");
+			connection =  DriverManager.getConnection("jdbc:mysql://" + url, user, password);
+			System.out.println("Connected!");
 		} catch (SQLException e) {
 			throw new IllegalStateException("Unable to connect.", e);
 		} catch (ClassNotFoundException e) {
