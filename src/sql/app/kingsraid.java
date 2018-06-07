@@ -7,7 +7,9 @@
  * CREATE USER 'java'@'localhost' IDENTIFIED BY 'test';
  * GRANT ALL ON kings_raid_items.* TO 'java'@'localhost' IDENTIFIED BY 'test'
  * Pre-reqs to using the project: an existing database, an existing account for the database (or root), and port is set to 3306.
- * The account information and port may be changed.
+ * This project uses the package Java.sql, or the Java Database Connectivity to implement MySQL database management using an
+ * embedded SQl.
+ * The account information and port may be changed.  
  */
 package sql.app;
 
@@ -42,14 +44,14 @@ public class kingsraid {
 	public void ui(){
 		Scanner kb = new Scanner(System.in);
 		getConnection();
-		int input = 0;
+		int input = 1;
 		try {
 			while (input != 6){
 				System.out.println("ようこそみんなさん | Welcome"
 						+ "\nWhat would you like to do?"
 						+ "\n\t1. create table (heroes or items)"
 						+ "\n\t2. delete table (heroes or items)"
-						+ "\n\t3. select query"
+						+ "\n\t3. custom statement"
 						+ "\n\t4. insert"
 						+ "\n\t5. display tables"
 						+ "\n\t6. exit");
@@ -60,7 +62,7 @@ public class kingsraid {
 						break;
 				case 2: deleteTables(kb);
 						break;
-				case 3: createQuery(createQueryString(kb));
+				case 3: createStatement(createStatementString(kb));
 						break;
 				case 4: insert(kb);
 						break;
@@ -68,7 +70,7 @@ public class kingsraid {
 						break;
 				case 6: closeConnection();
 						break;
-				default: closeConnection();
+				default: System.out.println("invalid option!");;
 						break;
 				}
 				System.out.println("\n");
@@ -87,7 +89,7 @@ public class kingsraid {
 	 * @return a properly formatted string representing a MySQL query.
 	 */
 	// to do
-	public String createQueryString(Scanner kb){
+	public String createStatementString(Scanner kb){
 		System.out.println("enter query");
 		String input = kb.nextLine();
 		return input;
@@ -103,23 +105,26 @@ public class kingsraid {
 		try {
 			Statement stmt = connection.createStatement();
 			System.out.println("Enter table name to create: (heroes or items)");
-			input = kb.nextLine().toLowerCase().trim();
-			
+			do {
+				input = kb.nextLine().toLowerCase().trim();
+			} while (!(input.equals("items") || input.equals("heroes")));
 			//check somewhat unreliable
 			if (input.equals("items")){
 				String statsList = "('atk', 'ats', 'crit', 'critd', 'pen', 'ls', 'pdodge', 'pblock', 'pdef', 'mdodge', 'mblock', 'mdef', 'hp', 'acc', 'cc')";
 				String stats = "ENUM " + statsList + " NOT NULL, ";
 				stmt.executeUpdate("create table kings_raid_items.ITEMS ("
 						+ "id SMALLINT UNSIGNED UNIQUE AUTO_INCREMENT, "
+							//maybe remove check, since ENUM
 						+ "Stat_1 " + stats + "CHECK (Stat_1 in " + statsList + "), "
 						+ "Stat_2 " + stats + "CHECK (Stat_2 in " + statsList + "), "
 						+ "Stat_3 " + stats + "CHECK (Stat_3 in " + statsList + "), "
 						+ "Stat_4 " + stats + "CHECK (Stat_4 in " + statsList + "), "
 						+ "Tier TINYINT UNSIGNED DEFAULT 7, "
-						+ "CHECK (Tier>0 AND Tier<8),"
-						+ "item_class ENUM(\"\") NOT NULL, "
-						+ "item_type NOT NULL, "
-						+ "item_location ENUM(\"\") NOT NULL,"
+							+ "CHECK (Tier>0 AND Tier<8),"
+						+ "Quantity TINYINT UNSIGNED DEFAULT 0,"
+			//			+ "item_class NOT NULL, " //ENUM(\"\")
+			//			+ "item_type NOT NULL,"
+			//			+ "item_location NOT NULL," // ENUM(\"\")
 						+ "Mod_stat ENUM(\"Stat_1\", \"STAT_2\", \"STAT_3\", \"STAT_4\", \"NULL\"),"
 						+ "PRIMARY KEY (id))");
 			}
@@ -147,7 +152,7 @@ public class kingsraid {
 
 	/**
 	 * Inserts data into the items table using a {@link PreparedStatement}.  The user-entered data is split into an array to be set into
-	 * the prepared statement.  Not possible to add multiple items in a single query (use createQuery()).
+	 * the prepared statement.  Not possible to add multiple items in a single query (use createStatement()).
 	 * todo insert data into heroes table 
 	 * @param kb Scanner to read user I/O.
 	 */
@@ -207,7 +212,7 @@ public class kingsraid {
 	 * Works for insert into, select, select *, show(columns), show 
 	 * todo rewrite using ResultSetMetaData?
 	 */
-	public void createQuery(String query){
+	public void createStatement(String query){
 		Statement stmt = null;
 		ResultSet rs = null;
 		
@@ -252,7 +257,7 @@ public class kingsraid {
 						//System.out.println("\ntesting : " + asterisk.toString());
 						
 						closeRSSTMT(columns, null);
-						createQuery(asterisk.toString());
+						createStatement(asterisk.toString());
 					} else {	//If select function but no asterisk
 						System.out.println("no *");
 						String format;
@@ -294,7 +299,7 @@ public class kingsraid {
 		}
 	}
 	public void displayTables(){
-		createQuery("SHOW TABLES FROM kings_raid_items");
+		createStatement("SHOW TABLES FROM kings_raid_items");
 	}
 
 
@@ -329,7 +334,8 @@ public class kingsraid {
 		try {	//tests for driver and returns an active connection to the database
 			Class.forName("com.mysql.jdbc.Driver");
 			//String unicode="useSSL=false&autoReconnect=true&useUnicode=yes&characterEncoding=UTF-8";
-			connection =  DriverManager.getConnection("jdbc:mysql://localhost:3306/kings_raid_items?autoReconnect=true&useSSL=false", "java", "test");
+			//can replace "root" with "java and "" with "test"
+			connection =  DriverManager.getConnection("jdbc:mysql://localhost:3306/kings_raid_items?autoReconnect=true&useSSL=false", "root", "");
 		} catch (SQLException e) {
 			throw new IllegalStateException("Unable to connect.", e);
 		} catch (ClassNotFoundException e) {
@@ -402,7 +408,7 @@ public class kingsraid {
 	 * @return boolean value depending if the project has the proper files.
 	 * This function is unused, as it is incorporated into getConnection().
 	 */
-	public boolean loadDriver(){	
+	public boolean loadDriver(){
 		boolean result = false;
 		try {
 			Class.forName("com.mysql.jdbc.Driver");
