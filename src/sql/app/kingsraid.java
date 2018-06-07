@@ -13,12 +13,12 @@ package sql.app;
 
 import java.sql.Connection;
 import java.sql.DriverManager;
+import java.sql.ResultSetMetaData;
 import java.sql.SQLException;
 import java.sql.Statement;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.Scanner;
 
 
@@ -44,14 +44,15 @@ public class kingsraid {
 		getConnection();
 		int input = 0;
 		try {
-			while (input != 5){
+			while (input != 6){
 				System.out.println("ようこそみんなさん | Welcome"
 						+ "\nWhat would you like to do?"
-						+ "\n\t1. create table"
-						+ "\n\t2. delete table"
-						+ "\n\t3. query"
+						+ "\n\t1. create table (heroes or items)"
+						+ "\n\t2. delete table (heroes or items)"
+						+ "\n\t3. select query"
 						+ "\n\t4. insert"
-						+ "\n\t5. exit");
+						+ "\n\t5. display tables"
+						+ "\n\t6. exit");
 				input = kb.nextInt();
 				kb.nextLine();
 				switch (input) {
@@ -63,22 +64,25 @@ public class kingsraid {
 						break;
 				case 4: insert(kb);
 						break;
-				case 5: closeConnection();
+				case 5: displayTables();
+						break;
+				case 6: closeConnection();
 						break;
 				default: closeConnection();
 						break;
 				}
-				System.out.println();
+				System.out.println("\n");
 			}
+			System.out.println("Seeやなら！");
 		} catch (SQLException e){
-			System.out.println("msg:" + e.getMessage());
+			System.out.println("Error! " + e.getMessage() + ", Error code: " + e.getErrorCode() + ", SQL State: " + e.getSQLState());
 		}
 		kb.close();
 		System.exit(0);
 	}
 	
 	/**
-	 * This method serves as a error-checking function to allow some leeway when allowing the user to enter a MySQL query.
+	 * This method serves as a Error-checking function to allow some leeway when allowing the user to enter a MySQL query.
 	 * @param kb Scanner object for user I/O.
 	 * @return a properly formatted string representing a MySQL query.
 	 */
@@ -100,6 +104,7 @@ public class kingsraid {
 			Statement stmt = connection.createStatement();
 			System.out.println("Enter table name to create: (heroes or items)");
 			input = kb.nextLine().toLowerCase().trim();
+			
 			//check somewhat unreliable
 			if (input.equals("items")){
 				String statsList = "('atk', 'ats', 'crit', 'critd', 'pen', 'ls', 'pdodge', 'pblock', 'pdef', 'mdodge', 'mblock', 'mdef', 'hp', 'acc', 'cc')";
@@ -119,7 +124,7 @@ public class kingsraid {
 						+ "PRIMARY KEY (id))");
 			}
 			else if (input.equals("heroes")){
-				String charpref = "TINYINT UNSIGNED UNIQUE, ";
+				String charpref = "TINYINT UNSIGNED UNIQUE DEFAULT NULL, ";
 				String ref = "REFERENCES kings_raid_items.ITEMS(id) ON DELETE SET NULL ON UPDATE CASCADE, ";
 				stmt.executeUpdate("create table kings_raid_items.HEROES ("
 						+ "name VARCHAR(15) NOT NULL UNIQUE,"
@@ -136,7 +141,7 @@ public class kingsraid {
 			System.out.println("Table " + input + " successfully created!");
 			closeRSSTMT(null, stmt);
 		} catch (SQLException e){
-			System.out.println("error! " + e.getMessage() + ", Error code: " + e.getErrorCode() + ", SQL State: " + e.getSQLState());
+			System.out.println("Error! " + e.getMessage() + ", Error code: " + e.getErrorCode() + ", SQL State: " + e.getSQLState());
 		}
 	}
 
@@ -148,41 +153,59 @@ public class kingsraid {
 	 */
 	public void insert(Scanner kb){
 		try {
-			PreparedStatement ps = connection.prepareStatement("insert into kings_raid_items.items"
-					+ "(stat_1, stat_2, stat_3, stat_4, tier, mod_stat, item_class, item_type, item_location) values (?, ?, ?, ?, ?, ?, ?, ?, ?)");
-			String input;
-			String[] inputBlock;
+			System.out.println("Would you like to insert into items or heroes?");
+			String inputTable = kb.nextLine();
+			if (inputTable.equalsIgnoreCase("heroes") || inputTable.equalsIgnoreCase("items")){
+				PreparedStatement ps;
+				if (inputTable.equalsIgnoreCase("items")){
+					ps = connection.prepareStatement("insert into kings_raid_items.items" 
+							+ "(stat_1, stat_2, stat_3, stat_4, tier, mod_stat, item_class, item_type, item_location) values (?, ?, ?, ?, ?, ?, ?, ?, ?)");	
+					System.out.println("Enter values to enter into: (stat_1, stat_2, stat_3, stat_4, tier, mod_stat, item_class, item_type, item_location)"
+							+ "\nv1, v2,..,vn");
+				} else {
+					ps = connection.prepareStatement("insert into kings_raid_items.heroes"
+							+ "(name, armor_pref, sec_gear_pref, accessory_pref, orb_pref) values (?, ?, ?, ?, ?)");
+					System.out.println("Enter values to enter into: (name, armor_pref, sec_gear_pref, accessory_pref, orb_pref)"
+							+ "\nv1, v2,..,vn");
+				}
+				String input;
+				String[] inputBlock;
 
-			System.out.println("Enter Values to enter into: (stat_1, stat_2, stat_3, stat_4, tier, mod_stat)"
-					+ "\nv1, v2,..,vn");
-			input = kb.nextLine();
-			inputBlock = input.split(", ");
+				input = kb.nextLine();
+				inputBlock = input.split(", ");
+				
+				//System.out.println("entered: " + Arrays.toString(inputBlock));
+				int i = 1;
+				for (String s : inputBlock){
+					ps.setString(i++, s);
+				}
 
-			//System.out.println("entered: " + Arrays.toString(inputBlock));
-			int i = 1;
-			for (String s : inputBlock){
-				ps.setString(i++, s);
+				int result = ps.executeUpdate();
+				if (result != 0){
+					System.out.println("insert success!");
+				}
+				else {
+					System.out.println("insert failed!");
+				}
+				closeRSSTMT(null, ps);
+			} else {
+				System.out.println("Unspecified table!");
+				insert(kb);
 			}
 
-			int result = ps.executeUpdate();
-			if (result != 0){
-				System.out.println("insert success!");
-			}
-			else {
-				System.out.println("insert failed!");
-			}
-			closeRSSTMT(null, ps);
 		} catch (SQLException e) {
-			System.out.println("error!" + e.getMessage() + ", Error code: " + e.getErrorCode() + ", SQL State: " + e.getSQLState());
+			System.out.println("Error!" + e.getMessage() + ", Error code: " + e.getErrorCode() + ", SQL State: " + e.getSQLState());
 		}
 	}
 
 	/**
 	 * 
-	 * @param query A user entered MySQL query that has some error-checking attempted on the statement.  The function initially 
+	 * @param query A user entered MySQL query that has some Error-checking attempted on the statement.  The function initially 
 	 * checks if the query has a result to be returned and executes accordingly.  If there is a result to be returned, then the query is
 	 * analyzed, where the control flow divides into whether or not the MySQL code uses an asterisk (*) for the table fields.  The result
 	 * is then formatted and displayed for the user.
+	 * Works for insert into, select, select *, show(columns), show 
+	 * todo rewrite using ResultSetMetaData?
 	 */
 	public void createQuery(String query){
 		Statement stmt = null;
@@ -190,79 +213,88 @@ public class kingsraid {
 		
 		try {
 			stmt = connection.createStatement();
+				//intended for select statements
 			if (stmt.execute(query)) {	//true if rs obj or false if no update/no result, rs stored in stmt; executeQuery(string) returns ResultSet
+				System.out.println("has rs");
 				rs = stmt.getResultSet();
-					//start indexes of certain keywords
-				int start = query.indexOf("select ") + 7;	//should be 0
-				int end = query.indexOf(" from ");	//index of first space before from
-				
-				String[] selectedTerms = query.substring(start, end).split(", ");	//contains terms, assuming not *
-				
-				if (selectedTerms.length > 0 && selectedTerms[0].equals("*")){	//if asterisk
-					int from = end + 6;
-					String fromTable = query.substring(from, query.length());
-					StringBuilder newQuery = new StringBuilder("select column_name from information_schema.columns where table_name = '");
-					newQuery.append(fromTable + "' and table_schema = 'kings_raid_items'");	//table name and db
+				if (query.length() > 6 && query.trim().substring(0, 6).contains("select")){
+						//start indexes of certain keywords
+					int start = query.indexOf("select ") + 7;	//should be 0
+					int end = query.indexOf(" from ");	//index of first space before from
 					
-					ResultSet columns = stmt.executeQuery(newQuery.toString());	// list of all column names
-					ArrayList<String> columnNames = new ArrayList<String>();	//hold the string representation of column names of variable amount
 					
-					int j = 0;
-					while (columns.next()){
-						//System.out.printf("%-8s ", columns.getString(1));
-						columnNames.add(j++, columns.getString(1));
-					}
-					StringBuilder asterisk = new StringBuilder("select ");
-					for (int i = 0; i < columnNames.size(); ++i){
-						asterisk.append(columnNames.get(i));
-						if (i < columnNames.size()-1)
-							asterisk.append(", ");
-						else
-							asterisk.append(" ");
-					}
-					asterisk.append("from " + fromTable);
-					//System.out.println("\ntesting : " + asterisk.toString());
+					String[] selectedTerms = query.substring(start, end).split(", ");	//contains terms, assuming not *
 					
-					closeRSSTMT(columns, null);
-					createQuery(asterisk.toString());
-				} else {
-					String format;
-					String[] textSizes = new String[selectedTerms.length];
-					//for (String s : selectedTerms){
-					for (int k = 0; k < selectedTerms.length; ++k){
-						format = "%-" + (selectedTerms[k].length()+1) + "s";
-						textSizes[k] = format;
-						System.out.printf(format, selectedTerms[k]);	//item_location is long
-					}
-					System.out.println();
-					while (rs.next()){
-						for (int i = 0; i < selectedTerms.length; ++i){
-							System.out.printf(textSizes[i], rs.getString(selectedTerms[i]));
-							//System.out.print(selectedTerms[i] + ": " + rs.getString(selectedTerms[i]) + ", ");
+					if (selectedTerms.length > 0 && selectedTerms[0].equals("*")){	//if asterisk
+						System.out.println("is *");
+						int from = end + 6;
+						String fromTable = query.substring(from, query.length());
+						StringBuilder newQuery = new StringBuilder("select column_name from information_schema.columns where table_name = '");
+						newQuery.append(fromTable + "' and table_schema = 'kings_raid_items'");	//table name and db
+						
+						ResultSet columns = stmt.executeQuery(newQuery.toString());	// list of all column names
+						ArrayList<String> columnNames = new ArrayList<String>();	//hold the string representation of column names of variable amount
+						
+						int j = 0;
+						while (columns.next()){
+							//System.out.printf("%-8s ", columns.getString(1));
+							columnNames.add(j++, columns.getString(1));
+						}
+						StringBuilder asterisk = new StringBuilder("select ");
+						for (int i = 0; i < columnNames.size(); ++i){
+							asterisk.append(columnNames.get(i));
+							if (i < columnNames.size()-1)
+								asterisk.append(", ");
+							else
+								asterisk.append(" ");
+						}
+						asterisk.append("from " + fromTable);
+						//System.out.println("\ntesting : " + asterisk.toString());
+						
+						closeRSSTMT(columns, null);
+						createQuery(asterisk.toString());
+					} else {	//If select function but no asterisk
+						System.out.println("no *");
+						String format;
+						String[] textSizes = new String[selectedTerms.length];
+						//for (String s : selectedTerms){
+						for (int k = 0; k < selectedTerms.length; ++k){
+							format = "%-" + (selectedTerms[k].length()+1) + "s";
+							textSizes[k] = format;
+							System.out.printf(format, selectedTerms[k]);	//item_location is long
 						}
 						System.out.println();
+						while (rs.next()){
+							for (int i = 0; i < selectedTerms.length; ++i){
+								System.out.printf(textSizes[i], rs.getString(selectedTerms[i]));
+								//System.out.print(selectedTerms[i] + ": " + rs.getString(selectedTerms[i]) + ", ");
+							}
+							System.out.println();
+						}
+					}
+				}
+				else if (query.length() > 4 && query.substring(0, 4).toLowerCase().contains("show")){	// has resultset
+					System.out.println("show");
+					ResultSetMetaData rsmd = rs.getMetaData();
+					int cols = rsmd.getColumnCount();
+					while (rs.next()){
+						for (int i = 1; i <= cols; ++i)
+							System.out.printf("%-10s", rs.getString(i));
 					}
 				}
 			}
 			else {
-				stmt.executeUpdate(query);
 				System.out.println("no rs");
+				//stmt.executeUpdate(query);
 			}
 		} catch (SQLException e) {
-			System.out.println("error! " + e.getMessage() + ", Error code: " + e.getErrorCode() + ", SQL State: " + e.getSQLState());
+			System.out.println("Error! " + e.getMessage() + ", Error code: " + e.getErrorCode() + ", SQL State: " + e.getSQLState());
 		} finally {
 			closeRSSTMT(rs, stmt);
 		}
 	}
 	public void displayTables(){
-		try {
-			Statement stmt = connection.createStatement();
-			stmt.executeQuery("SHOW TABLES FROM kings_raid_items");
-			//rs.
-		} catch (SQLException e) {
-			System.out.println("error! " + e.getMessage() + ", Error code: " + e.getErrorCode() + ", SQL State: " + e.getSQLState());
-		}
-		
+		createQuery("SHOW TABLES FROM kings_raid_items");
 	}
 
 
@@ -286,7 +318,7 @@ public class kingsraid {
 			System.out.println("Table " + tableToDrop + " successfully dropped!");
 			closeRSSTMT(null, stmt);
 		} catch (SQLException e) {
-			System.out.println("error!" + e.getMessage() + ", Error code: " + e.getErrorCode() + ", SQL State: " + e.getSQLState());
+			System.out.println("Error!" + e.getMessage() + ", Error code: " + e.getErrorCode() + ", SQL State: " + e.getSQLState());
 		}
 	}
 	
@@ -334,27 +366,17 @@ public class kingsraid {
 	}
 
 	
-	public void createTable(String sql){ // unused 
-		Statement stmt = null;
-		try {
-			stmt = connection.createStatement();
-			stmt.executeUpdate(sql);
-			System.out.println("Table created");
-		} catch (SQLException e) {
-			System.out.println("error! " + e.getMessage() + ", Error code: " + e.getErrorCode() + ", SQL State: " + e.getSQLState());
-		}
-	}
-	
 	/**
 	 * Login creates a connection with a database specified in parameters, with the user information also being 
 	 * specified in the fields.
+	 * This function is unused, as it is incorporated into getConnection().
 	 * @param user	the username to login with.
 	 * @param pass	the password to login with.
 	 * @param targeturl	the link to the database to connect to.
 	 * @return	the connection object representing an object of valid connection to the database or null.
 	 * @see java.sql.Connection.getConnection
 	 */
-	public Connection login(String user, String pass, String targeturl){	//modify this to extend privileges to other functions, unused
+	public Connection login(String user, String pass, String targeturl){
 		Connection connect = null;
 		if (loadDriver()){
 			String url = targeturl;
@@ -378,8 +400,9 @@ public class kingsraid {
 	/**
 	 * Test if the proper files are in place for java to perform SQL management.
 	 * @return boolean value depending if the project has the proper files.
+	 * This function is unused, as it is incorporated into getConnection().
 	 */
-	public boolean loadDriver(){	//unused
+	public boolean loadDriver(){	
 		boolean result = false;
 		try {
 			Class.forName("com.mysql.jdbc.Driver");
