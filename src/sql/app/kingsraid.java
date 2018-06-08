@@ -51,7 +51,7 @@ public class kingsraid {
 			}
 			connect = kb.nextLine();
 		} while (!connect.equals("1") && !connect.equals("2") && !connect.equalsIgnoreCase("custom") && !connect.equalsIgnoreCase("default"));
-		
+
 		if (connect.equalsIgnoreCase("custom") || connect.equals("1")){
 			System.out.println("this is insecure and only for personal project intentions.");
 			System.out.println("Enter url, user, pass."
@@ -67,11 +67,11 @@ public class kingsraid {
 		else{
 			getConnection();
 		}
-		
-		
+
+
 		int input = 1;
 		try {
-			while (input != 6){
+			while (input != 6){	//add option to delete/remove, update modstat/enchant
 				System.out.println("ようこそみんなさん | Welcome"
 						+ "\nWhat would you like to do?"
 						+ "\n\t1. create table (heroes or items)"
@@ -84,19 +84,19 @@ public class kingsraid {
 				kb.nextLine();
 				switch (input) {
 				case 1: createItemsAndHeroes(kb);
-						break;
+				break;
 				case 2: deleteTables(kb);
-						break;
+				break;
 				case 3: createStatement(createStatementString(kb));
-						break;
+				break;
 				case 4: insert(kb);
-						break;
+				break;
 				case 5: displayTables();
-						break;
+				break;
 				case 6: closeConnection();
-						break;
+				break;
 				default: System.out.println("invalid option!");;
-						break;
+				break;
 				}
 				System.out.println("\n");
 			}
@@ -107,7 +107,7 @@ public class kingsraid {
 		kb.close();
 		System.exit(0);
 	}
-	
+
 	/**
 	 * This method serves as a Error-checking function to allow some leeway when allowing the user to enter a MySQL query.
 	 * @param kb Scanner object for user I/O.
@@ -119,7 +119,7 @@ public class kingsraid {
 		String input = kb.nextLine();
 		return input;
 	}
-	
+
 	/**
 	 * This method creates a predetermined table in the database corresponding to either heroes or items.
 	 * enums for item_class, item_type, item_location to do
@@ -139,17 +139,17 @@ public class kingsraid {
 				String stats = "ENUM " + statsList + " NOT NULL, ";
 				stmt.executeUpdate("create table kings_raid_items.ITEMS ("
 						+ "id SMALLINT UNSIGNED UNIQUE AUTO_INCREMENT, "
-							//maybe remove check, since ENUM
+						//maybe remove check, since ENUM
 						+ "Stat_1 " + stats + "CHECK (Stat_1 in " + statsList + "), "
 						+ "Stat_2 " + stats + "CHECK (Stat_2 in " + statsList + "), "
 						+ "Stat_3 " + stats + "CHECK (Stat_3 in " + statsList + "), "
 						+ "Stat_4 " + stats + "CHECK (Stat_4 in " + statsList + "), "
 						+ "Tier TINYINT UNSIGNED DEFAULT 7, "
-							+ "CHECK (Tier>0 AND Tier<8),"
+						+ "CHECK (Tier>0 AND Tier<8),"
 						+ "Quantity TINYINT UNSIGNED DEFAULT 0,"
-			//			+ "item_class NOT NULL, " //ENUM(\"\")
-			//			+ "item_type NOT NULL,"
-			//			+ "item_location NOT NULL," // ENUM(\"\")
+						//			+ "item_class NOT NULL, " //ENUM(\"\")
+						//			+ "item_type NOT NULL,"
+						//			+ "item_location NOT NULL," // ENUM(\"\")
 						+ "Mod_stat ENUM(\"Stat_1\", \"STAT_2\", \"STAT_3\", \"STAT_4\", \"NULL\"),"
 						+ "Enchant varchar(50),"
 						+ "PRIMARY KEY (id))");
@@ -186,53 +186,61 @@ public class kingsraid {
 		try {
 			String inputTable = "";
 			do{
+				if (!inputTable.equals(""))
+					System.out.println("Unspecified table!");
 				System.out.println("Would you like to insert into items or heroes?");
 				inputTable = kb.nextLine();
-			} while (inputTable.equalsIgnoreCase("items") || inputTable.equalsIgnoreCase("heroes"));
-			
-			if (inputTable.equalsIgnoreCase("heroes") || inputTable.equalsIgnoreCase("items")){
-				PreparedStatement ps;
-				if (inputTable.equalsIgnoreCase("items")){
-					ps = connection.prepareStatement("insert into kings_raid_items.items" 
-							+ "(stat_1, stat_2, stat_3, stat_4, tier, mod_stat, item_class, item_type, item_location) values (?, ?, ?, ?, ?, ?, ?, ?, ?)");	
-					System.out.println("Enter values to enter into: (stat_1, stat_2, stat_3, stat_4, tier, mod_stat, item_class, item_type, item_location)"
-							+ "\nv1, v2,..,vn");
-				} else {
-					ps = connection.prepareStatement("insert into kings_raid_items.heroes"
-							+ "(name, armor_pref, sec_gear_pref, accessory_pref, orb_pref) values (?, ?, ?, ?, ?)");
-					System.out.println("Enter values to enter into: (name, armor_pref, sec_gear_pref, accessory_pref, orb_pref)"
-							+ "\nv1, v2,..,vn");
-				}
-				String input;
-				String[] inputBlock;
+			} while (!inputTable.equalsIgnoreCase("items") && !inputTable.equalsIgnoreCase("heroes"));
 
-				input = kb.nextLine();
-				inputBlock = input.split(", ");
-				
-				//System.out.println("entered: " + Arrays.toString(inputBlock));
-				int i = 1;
-				for (String s : inputBlock){
-					ps.setString(i++, s);
-				}
-
-				int result = ps.executeUpdate();
-				if (result != 0){
-					System.out.println("insert success!");
-				}
-				else {
-					System.out.println("insert failed!");
-				}
-				closeRSSTMT(null, ps);
+			PreparedStatement ps;
+			if (inputTable.equalsIgnoreCase("items")){	//omit quantitiy, update if same item with 
+														//UPDATE items SET Quantity = select quantity from items where stat_1...stat_4 LIKE stat_1...stat_4
+				ps = connection.prepareStatement("insert into kings_raid_items.items" 
+						+ "(stat_1, stat_2, stat_3, stat_4, tier, mod_stat, enchant) values (?, ?, ?, ?, ?, ?, ?)");	
+				System.out.println("Enter values to enter into: (stat_1, stat_2, stat_3, stat_4, tier, mod_stat, enchant)"// item_class, item_type, item_location
+						+ "\nv1, v2,..,vn");
 			} else {
-				System.out.println("Unspecified table!");
-				insert(kb);
+				ps = connection.prepareStatement("insert into kings_raid_items.heroes"
+						+ "(name, armor_pref, sec_gear_pref, accessory_pref, orb_pref) values (?, ?, ?, ?, ?)");
+				System.out.println("Enter values to enter into: (name, armor_pref, sec_gear_pref, accessory_pref, orb_pref)"
+						+ "\nv1, v2,..,vn");
+			}
+			String input;
+			do {
+				input = kb.nextLine().toLowerCase();
+			} while (printConstraints(input));
+
+			String[] inputBlock = input.split(", ");
+
+			//System.out.println("entered: " + Arrays.toString(inputBlock));
+			int i = 1;
+			for (String s : inputBlock){
+				ps.setString(i++, s);
 			}
 
+			int result = ps.executeUpdate();
+			if (result != 0){
+				System.out.println("insert success!");
+			}
+			else {
+				System.out.println("insert failed!");
+			}
+			closeRSSTMT(null, ps);
+			
 		} catch (SQLException e) {
 			System.out.println("Error!" + e.getMessage() + ", Error code: " + e.getErrorCode() + ", SQL State: " + e.getSQLState());
 		}
 	}
 
+	//this method prints the constraints of the variables to enter into input
+	public boolean printConstraints(String request){
+		if (request.equals("stat_1") || request.equals("stat_2") || request.equals("stat_3") 
+				|| request.equals("stat_4") || request.equals("mod_stat") || request.equals("enchant") || request.equals("help")){
+			System.out.println("Constraints are ('atk', 'ats', 'crit', 'critd', 'pen', 'ls', 'pdodge', 'pblock', 'pdef', 'mdodge', 'mblock', 'mdef', 'hp', 'acc', 'cc')");
+			return true;
+		}
+		return false;
+	}
 	/**
 	 * 
 	 * @param query A user entered MySQL query that has some Error-checking attempted on the statement.  The function initially 
@@ -245,31 +253,31 @@ public class kingsraid {
 	public void createStatement(String query){
 		Statement stmt = null;
 		ResultSet rs = null;
-		
+
 		try {
 			stmt = connection.createStatement();
-				//intended for select statements
+			//intended for select statements
 			if (stmt.execute(query)) {	//true if rs obj or false if no update/no result, rs stored in stmt; executeQuery(string) returns ResultSet
 				System.out.println("has rs");
 				rs = stmt.getResultSet();
-				if (query.length() > 6 && query.trim().substring(0, 6).contains("select")){
-						//start indexes of certain keywords
+				if (query.length() > 6 && query.trim().substring(0, 6).contains("select")) {
+					//start indexes of certain keywords
 					int start = query.indexOf("select ") + 7;	//should be 0
 					int end = query.indexOf(" from ");	//index of first space before from
-					
-					
+
+
 					String[] selectedTerms = query.substring(start, end).split(", ");	//contains terms, assuming not *
-					
+
 					if (selectedTerms.length > 0 && selectedTerms[0].equals("*")){	//if asterisk
 						System.out.println("is *");
 						int from = end + 6;
 						String fromTable = query.substring(from, query.length());
 						StringBuilder newQuery = new StringBuilder("select column_name from information_schema.columns where table_name = '");
 						newQuery.append(fromTable + "' and table_schema = 'kings_raid_items'");	//table name and db
-						
+
 						ResultSet columns = stmt.executeQuery(newQuery.toString());	// list of all column names
 						ArrayList<String> columnNames = new ArrayList<String>();	//hold the string representation of column names of variable amount
-						
+
 						int j = 0;
 						while (columns.next()){
 							//System.out.printf("%-8s ", columns.getString(1));
@@ -285,7 +293,7 @@ public class kingsraid {
 						}
 						asterisk.append("from " + fromTable);
 						//System.out.println("\ntesting : " + asterisk.toString());
-						
+
 						closeRSSTMT(columns, null);
 						createStatement(asterisk.toString());
 					} else {	//If select function but no asterisk
@@ -333,7 +341,7 @@ public class kingsraid {
 	}
 
 
-	
+
 	/**
 	 * Deletes a table specified by the user.
 	 * @param kb Scanner for user I/O.
@@ -342,21 +350,21 @@ public class kingsraid {
 		try {
 			String tableToDrop;
 			StringBuilder input = new StringBuilder("drop table kings_raid_items.");
-			
+
 			Statement stmt = connection.createStatement();
 			System.out.println("Enter table to drop: items or heroes");
 			tableToDrop = kb.nextLine();
-			
+
 			input.append(tableToDrop);
 			stmt.executeUpdate(input.toString());
-			
+
 			System.out.println("Table " + tableToDrop + " successfully dropped!");
 			closeRSSTMT(null, stmt);
 		} catch (SQLException e) {
 			System.out.println("Error!" + e.getMessage() + ", Error code: " + e.getErrorCode() + ", SQL State: " + e.getSQLState());
 		}
 	}
-	
+
 	/**
 	 * Grants a connection to the MySQL server using the login credentials that are hard-coded in.
 	 */
@@ -368,13 +376,17 @@ public class kingsraid {
 			connection =  DriverManager.getConnection("jdbc:mysql://localhost:3306/kings_raid_items?autoReconnect=true&useSSL=false", "root", "");
 			System.out.println("Connected!");
 		} catch (SQLException e) {
-			throw new IllegalStateException("Unable to connect.", e);
+			System.out.println("Unable to connect! Exiting...");
+			System.exit(0);
+			//			throw new IllegalStateException("Unable to connect.", e);
 		} catch (ClassNotFoundException e) {
+			System.out.println("Drivers not found! Exiting...");
 			e.printStackTrace();
-			throw new RuntimeException(e);
+			System.exit(0);
+			//			throw new RuntimeException(e);
 		}
 	}
-	
+
 	/**
 	 * Grants a connection to a specified MySQL server using a custom login.
 	 * @param url 
@@ -387,13 +399,15 @@ public class kingsraid {
 			connection =  DriverManager.getConnection("jdbc:mysql://" + url, user, password);
 			System.out.println("Connected!");
 		} catch (SQLException e) {
-			throw new IllegalStateException("Unable to connect.", e);
+			System.out.println("Unable to connect! Exiting...");
+			System.exit(0);
 		} catch (ClassNotFoundException e) {
+			System.out.println("Drivers not found! Exiting...");
 			e.printStackTrace();
-			throw new RuntimeException(e);
+			System.exit(0);
 		}
 	}
-	
+
 	/**
 	 * Helper function to close ResultSet and Statement objects.
 	 * @param rs
@@ -421,7 +435,7 @@ public class kingsraid {
 		connection.close();
 	}
 
-	
+
 	/**
 	 * Login creates a connection with a database specified in parameters, with the user information also being 
 	 * specified in the fields.
